@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────────────────
+#  ArticleHub — Docker Compose
+#
+#  Services:
+#    backend  → Flask API on port 5000 (internal only)
+#    frontend → Nginx serving React + proxying /api to backend
+#
+#  Usage:
+#    Start:   docker compose up --build
+#    Stop:    docker compose down
+#    Logs:    docker compose logs -f
+#    Reset:   docker compose down -v   (also deletes DB + uploads)
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Flask Backend ───────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend        # Build context = backend folder
+      dockerfile: Dockerfile
+    container_name: articlehub-backend
+
+    environment:
+      # These values override .env inside the container
+      FLASK_ENV: production
+      SECRET_KEY: ${SECRET_KEY:-super-secret-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-jwt-secret-change-in-production}
+      DATABASE_URL: sqlite:////app/data/articles.db   # stored in named volume
+      UPLOAD_FOLDER: /app/uploads                     # stored in named volume
+      MAX_CONTENT_LENGTH: "5242880"
+
+    volumes:
+      # Named volumes → data persists even when containers restart
+      - db_data:/app/data        # SQLite database file
+      - uploads_data:/app/uploads # Uploaded images
+
+    # Backend is NOT exposed to the host — only reachable by frontend (Nginx)
+    # This is more secure: API is not directly accessible from outside Docker
+    expose:
+      - "5000"
+
+    # Restart automatically if it crashes
+    restart: unless-stopped
+
+    # Health check — Docker will restart if Flask stops responding
+    # start_period gives gunicorn time to boot before checks begin
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/articles')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+  # ── React Frontend (Nginx) ──────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # VITE_API_URL is empty string here because Nginx proxies /api
+        # to backend internally — no need for absolute URL in the bundle
+        VITE_API_URL: ""
+    container_name: articlehub-frontend
+
+    ports:
+      # 👉 This is the only port exposed to your machine
+      # Visit http://localhost:3000 in your browser
+      - "3000:80"
+
+    # Frontend depends on backend being healthy before starting
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+# ── Named Volumes ───────────────────────────────────────────────
+# Docker manages these directories — they survive container restarts
+# and docker compose down (only removed with docker compose down -v)
+volumes:
+  db_data:       # Stores articles.db
+  uploads_data:  # Stores uploaded images

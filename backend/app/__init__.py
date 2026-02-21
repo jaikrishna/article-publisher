@@ -54,7 +54,7 @@ def create_app():
     app.register_blueprint(profile_bp, url_prefix='/api/profile')
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
 
-    # Create tables
+    # Create tables if they don't exist yet
     with app.app_context():
         db.create_all()
 

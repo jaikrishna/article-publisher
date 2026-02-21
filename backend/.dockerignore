@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environment (we install deps inside Docker, not copy from host)
+venv/
+.venv/
+env/
+
+# Local dev files
+.env
+*.db
+.DS_Store
+
+# Uploads (mounted as Docker volume, not baked into image)
+uploads/*
+!uploads/.gitkeep
+
+# Tests
+tests/
+.pytest_cache/

@@ -1,0 +1,18 @@
+# Never copy these into Docker — we run npm ci inside Docker instead
+node_modules/
+
+# Previous builds (Docker will do a fresh build)
+dist/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
